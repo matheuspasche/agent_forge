@@ -2,17 +2,35 @@ from core.state import AgentState
 from sandbox.dind_manager import DinDManager
 import subprocess
 
-def apply_tdd_skill(issue: str) -> tuple[str, str]:
+def apply_tdd_skill(issue: str, llm=None) -> tuple[str, str]:
     """
     Skill: /tdd
     Executes Test-Driven Development autonomously.
     """
     print(f"[Skill /tdd] Analisando issue para gerar código e testes: {issue}")
+    if llm:
+        import re
+        prompt = (
+            f"You are an expert Python developer. Given the following issue: {issue}\n"
+            "Generate the Python code to solve it, and the Python pytest-style tests for it.\n"
+            "Return ONLY the code and tests enclosed in <CODE>...</CODE> and <TEST>...</TEST> XML tags."
+        )
+        try:
+            response = llm.invoke(prompt)
+            content = response.content if hasattr(response, 'content') else str(response)
+            code_match = re.search(r'<CODE>(.*?)</CODE>', content, re.DOTALL)
+            test_match = re.search(r'<TEST>(.*?)</TEST>', content, re.DOTALL)
+            code = code_match.group(1).strip() if code_match else "def solve(data):\n    pass"
+            test = test_match.group(1).strip() if test_match else "print('Testes passaram!')"
+            return code, test
+        except Exception as e:
+            print(f"[Skill /tdd] Erro ao usar LLM: {e}")
+            
     code = "def solve(data):\n    return data.upper()"
     test = "assert solve('hello') == 'HELLO'\nprint('Testes passaram!')"
     return code, test
 
-def apply_diagnosing_bugs_skill(issue_id: str, code: str, test: str, logs: str) -> tuple[str, str]:
+def apply_diagnosing_bugs_skill(issue_id: str, code: str, test: str, logs: str, llm=None) -> tuple[str, str]:
     """
     Skill: /diagnosing-bugs
     Analyzes failing logs, the current code, and the test.
@@ -29,10 +47,31 @@ def apply_diagnosing_bugs_skill(issue_id: str, code: str, test: str, logs: str) 
         except Exception as e:
             print(f"[Developer Node] Falha ao comentar na issue: {e}")
             
+    if llm:
+        import re
+        prompt = (
+            "You are an expert Python developer diagnosing a bug.\n"
+            f"Current Code:\n{code}\n\n"
+            f"Current Test:\n{test}\n\n"
+            f"Failing Logs:\n{logs}\n\n"
+            "Fix the code to make the tests pass. Return the fixed code and the (possibly unchanged or fixed) test.\n"
+            "Return ONLY the code and tests enclosed in <CODE>...</CODE> and <TEST>...</TEST> XML tags."
+        )
+        try:
+            response = llm.invoke(prompt)
+            content = response.content if hasattr(response, 'content') else str(response)
+            code_match = re.search(r'<CODE>(.*?)</CODE>', content, re.DOTALL)
+            test_match = re.search(r'<TEST>(.*?)</TEST>', content, re.DOTALL)
+            fixed_code = code_match.group(1).strip() if code_match else code
+            fixed_test = test_match.group(1).strip() if test_match else test
+            return fixed_code, fixed_test
+        except Exception as e:
+            print(f"[Skill /diagnosing-bugs] Erro ao usar LLM: {e}")
+
     fixed_code = "def solve(data):\n    return str(data).upper()"
     return fixed_code, test
 
-def run_developer(state: AgentState) -> dict:
+def run_developer(state: AgentState, llm=None) -> dict:
     """
     Developer Node
     Pega a issue atual (agora um ID do GitHub), gera código, testa no Docker e reporta erros ao vivo no GitHub.
@@ -44,9 +83,12 @@ def run_developer(state: AgentState) -> dict:
         
     print(f"[Developer Node] Trabalhando na issue do GitHub: #{current_issue_id}")
     
+    if llm:
+        print(f"[Developer Node] Usando LLM instanciado: {llm.__class__.__name__}")
+    
     # Move para In Progress via CLI (Opcional, depende do Project)
     
-    code, test = apply_tdd_skill(current_issue_id)
+    code, test = apply_tdd_skill(current_issue_id, llm=llm)
     sandbox = DinDManager()
     max_retries = 3
     
@@ -75,7 +117,7 @@ def run_developer(state: AgentState) -> dict:
             
             if attempt < max_retries:
                 print("[Developer Node] Acionando a skill /diagnosing-bugs para corrigir...")
-                code, test = apply_diagnosing_bugs_skill(current_issue_id, code, test, logs)
+                code, test = apply_diagnosing_bugs_skill(current_issue_id, code, test, logs, llm=llm)
             else:
                 print("[Developer Node] Falha irreparável.")
                 return {"code_status": "FAILED", "error_logs": logs}
