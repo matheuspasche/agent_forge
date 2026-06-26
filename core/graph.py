@@ -45,11 +45,12 @@ def create_graph():
     
     refiner_llm = get_llm_for_node("refiner")
     architect_llm = get_llm_for_node("architect")
+    developer_llm = get_llm_for_node("developer")
     
     # Add nodes
     workflow.add_node("refiner", partial(run_refiner, llm=refiner_llm))
     workflow.add_node("architect", partial(run_architect, llm=architect_llm))
-    workflow.add_node("developer", run_developer)
+    workflow.add_node("developer", partial(run_developer, llm=developer_llm))
     
     # Define edges
     workflow.add_edge(START, "refiner")

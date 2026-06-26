@@ -2,6 +2,8 @@ from core.state import AgentState
 import os
 import subprocess
 import re
+import json
+from langchain_core.messages import SystemMessage, HumanMessage
 
 def run_architect(state: AgentState, llm=None) -> dict:
     """
@@ -26,7 +28,27 @@ def run_architect(state: AgentState, llm=None) -> dict:
     
     # Criar Issues Reais no GitHub (Skill /to-issues)
     issues_ids = []
-    tasks = ["Implementar feature A baseada no PRD", "Adicionar testes unitários para a feature A"]
+    tasks = []
+    
+    if llm:
+        system_msg = SystemMessage(content="You are a technical architect. Break down the following project idea into a list of specific, actionable tasks. Return ONLY a valid JSON array of strings, where each string is a task description.")
+        human_msg = HumanMessage(content=f"Idea: {refined_idea}")
+        
+        try:
+            response = llm.invoke([system_msg, human_msg])
+            content = response.content
+            
+            # Tenta extrair o array JSON caso haja markdown ao redor
+            json_match = re.search(r'\[.*\]', content, re.DOTALL)
+            if json_match:
+                tasks = json.loads(json_match.group(0))
+            else:
+                tasks = json.loads(content)
+        except Exception as e:
+            print(f"[Architect Node] Erro ao usar LLM para gerar tasks: {e}")
+            tasks = ["Implementar feature baseada no PRD (Fallback)"]
+    else:
+        tasks = ["Implementar feature baseada no PRD (Fallback sem LLM)"]
     
     for i, task_desc in enumerate(tasks):
         title = f"Task {i+1}: {task_desc[:20]}..."
