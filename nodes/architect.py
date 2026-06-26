@@ -1,7 +1,7 @@
 from core.state import AgentState
 import os
 
-def run_architect(state: AgentState) -> dict:
+def run_architect(state: AgentState, llm=None) -> dict:
     """
     Architect Node
     Implementa as skills '/to-prd' e '/to-issues' do padrão Matt Pocock.
@@ -11,6 +11,9 @@ def run_architect(state: AgentState) -> dict:
     
     refined_idea = state.get("refined_idea", "")
     
+    if llm:
+        print(f"[Architect Node] Usando LLM instanciado: {llm.__class__.__name__}")
+        
     # Em uma implementação real com LangChain, chamaríamos o modelo 'architect' (Claude) aqui,
     # passando o `refined_idea` e solicitando a geração do PRD.
     
