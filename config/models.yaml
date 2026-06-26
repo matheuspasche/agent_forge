@@ -1,0 +1,30 @@
+agents:
+  # O Agente Entrevistador lida com a pessoa, precisa ser rápido e inteligente
+  refiner:
+    provider: anthropic
+    model: claude-3-5-sonnet-20240620
+    temperature: 0.7
+
+  # O Arquiteto converte conversas em PRD
+  architect:
+    provider: anthropic
+    model: claude-3-5-sonnet-20240620
+    temperature: 0.2
+
+  # O Desenvolvedor escreve os testes e os containers
+  developer:
+    provider: google
+    model: gemini-1.5-pro
+    temperature: 0.1
+
+  # O Revisor lê os logs do docker e garante que tá seguro e testado
+  reviewer:
+    provider: openai
+    model: gpt-4o
+    temperature: 0.0
+
+  # O documentador atualiza a KB
+  reporter:
+    provider: google
+    model: gemini-1.5-flash
+    temperature: 0.2

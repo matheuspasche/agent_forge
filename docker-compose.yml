@@ -1,0 +1,29 @@
+version: '3.8'
+
+services:
+  # ChromaDB para memória vetorial local
+  chromadb:
+    image: chromadb/chroma:latest
+    container_name: agent_forge_chroma
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./chroma_data:/chroma/chroma
+    networks:
+      - agent_forge_net
+
+  # Daemon Docker in Docker (DinD) para isolamento das sandboxes de teste
+  dind:
+    image: docker:dind
+    container_name: agent_forge_dind
+    privileged: true
+    environment:
+      - DOCKER_TLS_CERTDIR=
+    ports:
+      - "2375:2375" # Expondo a API do docker (CUIDADO: apenas para desenvolvimento local)
+    networks:
+      - agent_forge_net
+
+networks:
+  agent_forge_net:
+    driver: bridge

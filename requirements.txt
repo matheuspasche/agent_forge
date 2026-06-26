@@ -1,0 +1,22 @@
+# LangGraph & LangChain ecosystem
+langchain>=0.2.0
+langchain-anthropic
+langchain-google-genai
+langchain-openai
+langgraph
+langgraph-cli
+
+# Vector DB
+chromadb
+
+# Docker SDK para Python (para controlar o DinD)
+docker
+
+# CLI tools
+typer
+rich
+
+# Utils
+pydantic>=2.0.0
+python-dotenv
+pyyaml
