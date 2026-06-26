@@ -1,25 +1,21 @@
 from core.state import AgentState
 import os
+import subprocess
+import re
 
 def run_architect(state: AgentState, llm=None) -> dict:
     """
     Architect Node
-    Implementa as skills '/to-prd' e '/to-issues' do padrão Matt Pocock.
-    Converte a 'refined_idea' e 'CONTEXT.md' em um PRD formal e Issues fatiadas (Vertical Slices).
+    Converte a ideia em PRD e delega as Issues via GitHub.
     """
-    print("[Architect Node] Transformando ideias em PRD e Issues...")
+    print("[Architect Node] Transformando ideias em PRD e Issues no GitHub...")
     
-    refined_idea = state.get("refined_idea", "")
+    refined_idea = state.get("refined_idea", "Idea fallback")
     
     if llm:
         print(f"[Architect Node] Usando LLM instanciado: {llm.__class__.__name__}")
         
-    # Em uma implementação real com LangChain, chamaríamos o modelo 'architect' (Claude) aqui,
-    # passando o `refined_idea` e solicitando a geração do PRD.
-    
     prd_content = f"# PRD Gerado\n\nBaseado na ideia: {refined_idea}\n\n## Objetivos...\n(Simulado pelo Architect Node)"
-    
-    # Criar a pasta knowledge_base/ se não existir
     os.makedirs("knowledge_base/issues", exist_ok=True)
     
     prd_path = "knowledge_base/PRD_generated.md"
@@ -28,14 +24,25 @@ def run_architect(state: AgentState, llm=None) -> dict:
         
     print(f"[Architect Node] PRD salvo em {prd_path}")
     
-    # Simulando a skill /to-issues
-    issues = [
-        "knowledge_base/issues/TASK-1.md",
-        "knowledge_base/issues/TASK-2.md"
-    ]
+    # Criar Issues Reais no GitHub (Skill /to-issues)
+    issues_ids = []
+    tasks = ["Implementar feature A baseada no PRD", "Adicionar testes unitários para a feature A"]
     
-    for i, issue_path in enumerate(issues):
-        with open(issue_path, "w", encoding="utf-8") as f:
-            f.write(f"# Task {i+1}\n\nDetalhes da task (Simulado).")
+    for i, task_desc in enumerate(tasks):
+        title = f"Task {i+1}: {task_desc[:20]}..."
+        try:
+            result = subprocess.run(
+                ["gh", "issue", "create", "--title", title, "--body", task_desc],
+                capture_output=True, text=True, check=True
+            )
+            # Extrair a URL ou número da issue (ex: https://github.com/user/repo/issues/12)
+            url = result.stdout.strip()
+            match = re.search(r'/issues/(\d+)$', url)
+            if match:
+                issues_ids.append(match.group(1))
+            print(f"[Architect Node] Issue criada no GitHub: {url}")
+        except subprocess.CalledProcessError as e:
+            print(f"[Architect Node] Falha ao criar issue: {e.stderr}")
             
-    return {"prd_path": prd_path, "issues": issues, "current_issue": issues[0] if issues else None}
+    # Retorna os IDs das issues do GitHub (ex: ["12", "13"])
+    return {"prd_path": prd_path, "issues": issues_ids, "current_issue": issues_ids[0] if issues_ids else None}
